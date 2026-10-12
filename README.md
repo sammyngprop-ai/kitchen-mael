@@ -12,7 +12,7 @@ Logs Mama's and Papa's meals (Breakfast, Lunch, Teatime, Dinner, Supper) to a Go
    - Deploy, authorize when asked, and copy the **Web app URL** (ends in `/exec`).
 4. Host `index.html` anywhere static (GitHub Pages, Netlify Drop, Cloudflare Pages), or just open it locally.
    - Camera capture on phones needs **HTTPS** (all the hosts above provide it).
-5. Open the app, tap ⚙️, paste the Web app URL, Save.
+5. Open `index.html`, paste the Web app URL into `const SCRIPT_URL = '';` near the top of the script, and save.
 
 ## What happens on save
 - A `Meals` tab is created in your sheet: Logged At | Date | Person | Meal | Description | Photo Link | Photo.

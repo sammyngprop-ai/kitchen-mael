@@ -45,21 +45,11 @@
   .tag.Mama { background:var(--mama); } .tag.Papa { background:var(--papa); }
   .row small { color:var(--muted); display:block; }
   .row a { margin-left:auto; text-decoration:none; font-size:1.3rem; }
-  #setup { display:none; }
-  #setup input { width:100%; padding:11px; border:1px solid var(--line); border-radius:10px; font:inherit; background:var(--bg); color:var(--ink); margin:8px 0; }
-  .gear { background:none; border:0; font-size:1.3rem; padding:4px; }
 </style>
 </head>
 <body>
 <main>
-  <h1>🍳 Kitchen Mael <button class="gear" id="gear" aria-label="Settings">⚙️</button></h1>
-
-  <div class="card" id="setup">
-    <strong>Connect to Google Sheet</strong>
-    <p style="color:var(--muted);margin:6px 0">Paste your Apps Script Web App URL (see README).</p>
-    <input id="url" type="url" placeholder="https://script.google.com/macros/s/.../exec">
-    <button id="saveUrl" class="primary" style="margin-top:4px">Save</button>
-  </div>
+  <h1>🍳 Kitchen Mael</h1>
 
   <form id="form" class="card" autocomplete="off">
     <h2 style="margin-top:0">Who</h2>
@@ -95,14 +85,11 @@
 </main>
 
 <script>
+// Paste your Apps Script Web App URL (ends in /exec) between the quotes:
+const SCRIPT_URL = '';
 const MEALS = ['Breakfast','Lunch','Teatime','Dinner','Supper'];
 const $ = id => document.getElementById(id);
 let photoB64 = '';
-
-const store = {
-  get: k => { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
-  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }
-};
 
 // Meal radios
 $('mealSeg').innerHTML = MEALS.map((m, i) =>
@@ -116,13 +103,6 @@ $('date').value = today.toISOString().slice(0, 10);
 const h = new Date().getHours();
 const guess = h < 11 ? 'Breakfast' : h < 15 ? 'Lunch' : h < 18 ? 'Teatime' : h < 22 ? 'Dinner' : 'Supper';
 $('m-' + guess).checked = true;
-
-// Settings
-const scriptUrl = () => store.get('scriptUrl');
-function showSetup(show) { $('setup').style.display = show ? 'block' : 'none'; }
-$('gear').onclick = () => { $('url').value = scriptUrl(); showSetup($('setup').style.display !== 'block'); };
-$('saveUrl').onclick = () => { store.set('scriptUrl', $('url').value.trim()); showSetup(false); loadRecent(); };
-if (!scriptUrl()) showSetup(true);
 
 // Photo: resize to max 1000px JPEG so uploads stay small
 function handleFile(file) {
@@ -150,7 +130,7 @@ function msg(text, cls) { $('msg').textContent = text; $('msg').className = cls 
 // Submit: text/plain avoids a CORS preflight, which Apps Script doesn't answer
 $('form').onsubmit = async e => {
   e.preventDefault();
-  if (!scriptUrl()) { showSetup(true); return msg('Set your Web App URL first.', 'err'); }
+  if (!SCRIPT_URL) return msg('Add your Web App URL in index.html first.', 'err');
   $('submit').disabled = true; msg('Saving…');
   try {
     const body = {
@@ -160,7 +140,7 @@ $('form').onsubmit = async e => {
       description: $('desc').value.trim(),
       photo: photoB64, mime: 'image/jpeg'
     };
-    const r = await fetch(scriptUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+    const r = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error);
     msg('✓ Saved to your sheet', 'ok');
@@ -172,9 +152,9 @@ $('form').onsubmit = async e => {
 };
 
 async function loadRecent() {
-  if (!scriptUrl()) return;
+  if (!SCRIPT_URL) return;
   try {
-    const j = await (await fetch(scriptUrl())).json();
+    const j = await (await fetch(SCRIPT_URL)).json();
     if (!j.ok || !j.rows.length) return;
     const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     $('recent').innerHTML = j.rows.map(r =>
