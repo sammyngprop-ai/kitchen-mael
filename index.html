@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitchen Mael</title>
+<style>
+  :root { --bg:#faf6f0; --card:#fff; --ink:#2b2622; --muted:#7a6f66; --line:#e6dccd;
+          --mama:#c2557a; --papa:#2f6f9f; --ok:#2e7d4f; --err:#b3261e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1d1a17; --card:#282420; --ink:#f1e9df; --muted:#a79b8f; --line:#3d362f; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.4 system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:520px; margin:0 auto; padding:16px; }
+  h1 { font-size:1.4rem; margin:8px 0 16px; display:flex; justify-content:space-between; align-items:center; }
+  h2 { font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:18px 0 8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; }
+  .seg { display:grid; gap:8px; }
+  .seg.two { grid-template-columns:1fr 1fr; }
+  .seg.five { grid-template-columns:repeat(auto-fit,minmax(90px,1fr)); }
+  .seg input { position:absolute; opacity:0; pointer-events:none; }
+  .seg label { text-align:center; padding:12px 6px; border:2px solid var(--line); border-radius:10px; cursor:pointer; font-weight:600; }
+  .seg input:checked + label { color:#fff; border-color:transparent; background:var(--accent,#555); }
+  .seg input:focus-visible + label { outline:3px solid var(--ink); outline-offset:2px; }
+  #personSeg label[for=p-mama] { --accent:var(--mama); }
+  #personSeg label[for=p-papa] { --accent:var(--papa); }
+  #mealSeg input:checked + label { --accent:var(--ink); background:var(--ink); color:var(--bg); }
+  input[type=date], textarea { width:100%; padding:11px; border:1px solid var(--line); border-radius:10px;
+          font:inherit; background:var(--bg); color:var(--ink); }
+  textarea { resize:vertical; min-height:70px; }
+  .photoBtns { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  button, .btn { font:inherit; font-weight:600; padding:12px; border-radius:10px; border:2px solid var(--line);
+          background:var(--card); color:var(--ink); cursor:pointer; text-align:center; }
+  button.primary { background:var(--ok); color:#fff; border-color:transparent; width:100%; margin-top:16px; padding:15px; font-size:1.05rem; }
+  button:disabled { opacity:.5; cursor:wait; }
+  #preview { display:none; margin-top:10px; position:relative; }
+  #preview img { width:100%; max-height:300px; object-fit:cover; border-radius:10px; display:block; }
+  #preview button { position:absolute; top:8px; right:8px; padding:6px 10px; }
+  #msg { margin-top:12px; font-weight:600; min-height:1.4em; }
+  #msg.ok { color:var(--ok); } #msg.err { color:var(--err); }
+  .row { display:flex; gap:10px; padding:10px 0; border-top:1px solid var(--line); align-items:center; }
+  .row:first-child { border-top:0; }
+  .tag { font-size:.75rem; font-weight:700; color:#fff; border-radius:6px; padding:2px 7px; }
+  .tag.Mama { background:var(--mama); } .tag.Papa { background:var(--papa); }
+  .row small { color:var(--muted); display:block; }
+  .row a { margin-left:auto; text-decoration:none; font-size:1.3rem; }
+  #setup { display:none; }
+  #setup input { width:100%; padding:11px; border:1px solid var(--line); border-radius:10px; font:inherit; background:var(--bg); color:var(--ink); margin:8px 0; }
+  .gear { background:none; border:0; font-size:1.3rem; padding:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🍳 Kitchen Mael <button class="gear" id="gear" aria-label="Settings">⚙️</button></h1>
+
+  <div class="card" id="setup">
+    <strong>Connect to Google Sheet</strong>
+    <p style="color:var(--muted);margin:6px 0">Paste your Apps Script Web App URL (see README).</p>
+    <input id="url" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+    <button id="saveUrl" class="primary" style="margin-top:4px">Save</button>
+  </div>
+
+  <form id="form" class="card" autocomplete="off">
+    <h2 style="margin-top:0">Who</h2>
+    <div class="seg two" id="personSeg">
+      <input type="radio" name="person" id="p-mama" value="Mama" checked><label for="p-mama">👩 Mama</label>
+      <input type="radio" name="person" id="p-papa" value="Papa"><label for="p-papa">👨 Papa</label>
+    </div>
+
+    <h2>Meal</h2>
+    <div class="seg five" id="mealSeg"></div>
+
+    <h2>Date</h2>
+    <input type="date" id="date" required>
+
+    <h2>What did they eat?</h2>
+    <textarea id="desc" placeholder="e.g. Nasi lemak with egg"></textarea>
+
+    <h2>Photo</h2>
+    <div class="photoBtns">
+      <label class="btn" for="cam">📷 Scan / Camera</label>
+      <label class="btn" for="upl">🖼️ Upload</label>
+    </div>
+    <input type="file" id="cam" accept="image/*" capture="environment" hidden>
+    <input type="file" id="upl" accept="image/*" hidden>
+    <div id="preview"><img id="prevImg" alt="Meal photo preview"><button type="button" id="rmPhoto">✕</button></div>
+
+    <button class="primary" id="submit" type="submit">Save to Google Sheet</button>
+    <div id="msg" role="status"></div>
+  </form>
+
+  <h2>Recent</h2>
+  <div class="card" id="recent"><span style="color:var(--muted)">Nothing yet.</span></div>
+</main>
+
+<script>
+const MEALS = ['Breakfast','Lunch','Teatime','Dinner','Supper'];
+const $ = id => document.getElementById(id);
+let photoB64 = '';
+
+const store = {
+  get: k => { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }
+};
+
+// Meal radios
+$('mealSeg').innerHTML = MEALS.map((m, i) =>
+  `<input type="radio" name="meal" id="m-${m}" value="${m}" ${i === 0 ? 'checked' : ''}><label for="m-${m}">${m}</label>`).join('');
+
+// Default date = today (local)
+const today = new Date(); today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+$('date').value = today.toISOString().slice(0, 10);
+
+// Pre-select the likely meal by time of day
+const h = new Date().getHours();
+const guess = h < 11 ? 'Breakfast' : h < 15 ? 'Lunch' : h < 18 ? 'Teatime' : h < 22 ? 'Dinner' : 'Supper';
+$('m-' + guess).checked = true;
+
+// Settings
+const scriptUrl = () => store.get('scriptUrl');
+function showSetup(show) { $('setup').style.display = show ? 'block' : 'none'; }
+$('gear').onclick = () => { $('url').value = scriptUrl(); showSetup($('setup').style.display !== 'block'); };
+$('saveUrl').onclick = () => { store.set('scriptUrl', $('url').value.trim()); showSetup(false); loadRecent(); };
+if (!scriptUrl()) showSetup(true);
+
+// Photo: resize to max 1000px JPEG so uploads stay small
+function handleFile(file) {
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const s = Math.min(1, 1000 / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const dataUrl = c.toDataURL('image/jpeg', 0.8);
+    photoB64 = dataUrl.split(',')[1];
+    $('prevImg').src = dataUrl;
+    $('preview').style.display = 'block';
+    URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(file);
+}
+$('cam').onchange = e => { handleFile(e.target.files[0]); e.target.value = ''; };
+$('upl').onchange = e => { handleFile(e.target.files[0]); e.target.value = ''; };
+$('rmPhoto').onclick = () => { photoB64 = ''; $('preview').style.display = 'none'; };
+
+function msg(text, cls) { $('msg').textContent = text; $('msg').className = cls || ''; }
+
+// Submit: text/plain avoids a CORS preflight, which Apps Script doesn't answer
+$('form').onsubmit = async e => {
+  e.preventDefault();
+  if (!scriptUrl()) { showSetup(true); return msg('Set your Web App URL first.', 'err'); }
+  $('submit').disabled = true; msg('Saving…');
+  try {
+    const body = {
+      person: document.querySelector('[name=person]:checked').value,
+      meal: document.querySelector('[name=meal]:checked').value,
+      date: $('date').value,
+      description: $('desc').value.trim(),
+      photo: photoB64, mime: 'image/jpeg'
+    };
+    const r = await fetch(scriptUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error);
+    msg('✓ Saved to your sheet', 'ok');
+    $('desc').value = ''; photoB64 = ''; $('preview').style.display = 'none';
+    loadRecent();
+  } catch (err) {
+    msg('Failed: ' + err.message, 'err');
+  } finally { $('submit').disabled = false; }
+};
+
+async function loadRecent() {
+  if (!scriptUrl()) return;
+  try {
+    const j = await (await fetch(scriptUrl())).json();
+    if (!j.ok || !j.rows.length) return;
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    $('recent').innerHTML = j.rows.map(r =>
+      `<div class="row"><span class="tag ${esc(r.person)}">${esc(r.person)}</span>
+       <div><strong>${esc(r.meal)}</strong> <small>${esc(r.date)}</small>${esc(r.description)}</div>
+       ${r.link ? `<a href="${esc(r.link)}" target="_blank" rel="noopener" aria-label="Open photo">🖼️</a>` : ''}</div>`).join('');
+  } catch {}
+}
+loadRecent();
+</script>
+</body>
+</html>
